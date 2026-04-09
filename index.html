@@ -466,7 +466,8 @@ function toggleEra(){ eraser=!eraser; document.getElementById('ber').classList.t
 function resetAll(){ hmap.fill(0); rAll(); }
 function saveImage(){ rAll(); const a=document.createElement('a'); a.download='sand-drawing.png'; a.href=sc.toDataURL('image/png'); a.click(); }
 
-const audioEl=new Audio('oceanwaves.mp3');
+// UPDATED: Linked to Google Drive raw file data
+const audioEl=new Audio('https://docs.google.com/uc?export=download&id=1J8t3VGfphmqrliKghLsOv6UoOcOHDnsy');
 audioEl.loop=true; audioEl.volume=0.8;
 function toggleSound(){
   const btn=document.getElementById('bsnd');
