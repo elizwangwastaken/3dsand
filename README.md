@@ -1,6 +1,6 @@
 # 3d sand
 
-made 3d sand just so i can draw in it
+made 3d sand just so i can draw in [it](https://elizwangwastaken.github.io/3dsand/)
 
 drag to carve. fast = shallow, slow = deep. WebGL normals do the lighting math so it actually looks like sand
 
