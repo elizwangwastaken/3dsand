@@ -1,490 +1,491 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>3D Sand Drawing</title>
-  <link rel="icon" href="favicon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body {
-      width: 100%; height: 100%;
-      background: #0d0b09;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: flex-start;
-      padding-top: 12px;
-      font-family: 'Figtree', sans-serif;
-      user-select: none; overflow: hidden;
-    }
-
-    #wrap {
-      position: relative; border-radius: 8px; overflow: hidden;
-      margin-bottom: 14px;
-      box-shadow: 0 28px 90px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.04);
-    }
-    canvas { display: block; }
-    #cc { display: none; }
-    #sc { cursor: default; touch-action: none; }
-
-    #bar {
-      display: flex; align-items: center; gap: 8px;
-      padding: 9px 18px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 40px;
-      backdrop-filter: blur(8px);
-      flex-wrap: wrap; justify-content: center;
-      max-width: calc(100vw - 24px);
-    }
-    .sep { width: 1px; height: 18px; background: rgba(255,255,255,0.12); margin: 0 2px; flex-shrink: 0; }
-
-    button {
-      font-family: 'Figtree', sans-serif;
-      font-size: 13px; font-weight: 500;
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 6px 14px; border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.55);
-      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
-      white-space: nowrap; -webkit-tap-highlight-color: transparent;
-    }
-    button:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.88); }
-
-    button.on {
-      background: rgba(195,155,90,0.28);
-      border-color: rgba(215,175,100,0.75);
-      color: #e2b96a;
-      box-shadow: 0 0 0 2px rgba(195,155,90,0.22), inset 0 1px 0 rgba(255,255,255,0.10);
-    }
-    button.on:hover { background: rgba(195,155,90,0.38); }
-
-    button.btn-save {
-      background: rgba(59,130,246,0.18);
-      border-color: rgba(99,160,255,0.45);
-      color: rgba(147,197,253,0.90);
-    }
-    button.btn-save:hover {
-      background: rgba(59,130,246,0.30);
-      border-color: rgba(99,160,255,0.70);
-      color: #bfdbfe;
-    }
-    button.btn-reset:hover {
-      background: rgba(239,68,68,0.16);
-      border-color: rgba(239,68,68,0.38);
-      color: rgba(252,165,165,0.90);
-    }
-
-    .size-group { display: flex; align-items: center; gap: 8px; }
-    .size-label  { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.35); letter-spacing: 0.02em; }
-
-    input[type=range] {
-      -webkit-appearance: none; appearance: none;
-      width: 100px; height: 4px; border-radius: 2px;
-      background: rgba(255,255,255,0.14);
-      cursor: pointer; outline: none; border: none;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px; height: 18px; border-radius: 50%;
-      background: #c49b5a; cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
-      transition: transform 0.1s;
-    }
-    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-    input[type=range]::-moz-range-thumb {
-      width: 18px; height: 18px; border-radius: 50%; border: none;
-      background: #c49b5a; cursor: pointer;
-    }
-    input[type=number] {
-      -moz-appearance: textfield;
-      width: 44px;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 8px;
-      color: rgba(255,255,255,0.75);
-      font-family: 'Figtree', sans-serif;
-      font-size: 12.5px; font-weight: 500;
-      padding: 5px 6px; text-align: center;
-      outline: none; transition: border-color 0.12s;
-    }
-    input[type=number]:focus { border-color: rgba(195,155,90,0.55); }
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
-
-    @media (max-width: 600px) {
-      html, body { padding-top: 8px; }
-      #wrap { margin-bottom: 10px; }
-      #bar { padding: 8px 12px; gap: 6px; border-radius: 16px; }
-      button { padding: 7px 12px; font-size: 14px; }
-      input[type=range] { width: 80px; }
-      .num-input { display: none; }
-      .sep { height: 16px; }
-    }
-  </style>
-</head>
-<body>
-
-<div id="wrap">
-  <canvas id="sc"></canvas>
-  <canvas id="cc"></canvas>
-</div>
-
-<div id="bar">
-  <div class="size-group">
-    <span class="size-label">Size</span>
-    <input type="range"  id="szr" min="1" max="100" value="12" />
-    <input type="number" id="szn" min="1" max="100" value="12" class="num-input" autocomplete="off" />
-  </div>
-  <div class="sep"></div>
-  <button id="ber" onclick="toggleEra()" title="Toggle eraser">🪏</button>
-  <div class="sep"></div>
-  <button id="bsnd" onclick="toggleSound()" title="Toggle ocean sound">🌊</button>
-  <div class="sep"></div>
-  <button class="btn-reset" onclick="resetAll()">Reset</button>
-  <div class="sep"></div>
-  <button class="btn-save" onclick="saveImage()">Save</button>
-</div>
-
-<script>
-const sc   = document.getElementById('sc');
-const cc   = document.getElementById('cc');
-const cctx = cc.getContext('2d');
-
-const MOBILE = window.innerWidth < 600;
-const W = Math.min(window.innerWidth  - (MOBILE ? 16 : 40), 1160) | 0;
-const H = Math.max(300, window.innerHeight - (MOBILE ? 100 : 60)) | 0;
-sc.width = cc.width  = W;
-sc.height = cc.height = H;
-
-// FIXED: Set maxRadius to exactly 100
-const maxRadius = 100;
-document.getElementById('szr').max = maxRadius;
-document.getElementById('szn').max = maxRadius;
-
-const _gl2  = sc.getContext('webgl2', {preserveDrawingBuffer:true});
-const _gl1  = !_gl2 && sc.getContext('webgl', {preserveDrawingBuffer:true});
-const gl    = _gl2 || _gl1;
-const isGL2 = !!_gl2;
-
-let hFmt, intFmt;
-if (isGL2) { intFmt = gl.R32F; hFmt = gl.RED; }
-else { gl.getExtension('OES_texture_float'); intFmt = gl.LUMINANCE; hFmt = gl.LUMINANCE; }
-
-const VSRC = `
-attribute vec2 aPos;
-varying vec2 vUV;
-void main(){
-  gl_Position=vec4(aPos,0.0,1.0);
-  vUV=vec2((aPos.x+1.0)*0.5, 1.0-(aPos.y+1.0)*0.5);
-}`;
-
-const FSRC = `
-precision highp float;
-varying vec2 vUV;
-uniform sampler2D uHeight;
-uniform sampler2D uGrain;
-uniform vec2 uTexel;
-uniform vec2 uRes;
-const float AMB   = 0.56;
-const float NS    = 18.0;
-const vec3  LIGHT = vec3(0.5504,-0.2002,0.8106);
-void main(){
-  float h  = texture2D(uHeight,vUV).r;
-  float hL = texture2D(uHeight,vUV+vec2(-uTexel.x,0.0)).r;
-  float hR = texture2D(uHeight,vUV+vec2( uTexel.x,0.0)).r;
-  float hU = texture2D(uHeight,vUV+vec2(0.0,-uTexel.y)).r;
-  float hD = texture2D(uHeight,vUV+vec2(0.0, uTexel.y)).r;
-  vec3  N     = normalize(vec3((hL-hR)*NS,(hU-hD)*NS,2.0));
-  float diff  = max(0.0,dot(N,LIGHT));
-  float light = AMB+(1.0-AMB)*diff;
-  float depthF= max(0.30,exp(h*0.32));
-  vec3  grain = texture2D(uGrain,vUV).rgb;
-  vec3  warm  = vec3(0.365,0.251,0.216);
-  float shad  = clamp(-h*0.9,0.0,1.0);
-  vec3  base  = mix(grain,warm,shad*0.38);
-  float moist = clamp(-h*2.0,0.0,1.0); moist*=moist;
-  base = mix(base,vec3(0.27,0.19,0.12),moist*0.20);
-  float spec  = (h>0.05)?pow(N.z,18.0)*h*0.28:0.0;
-  vec3  col   = base*light*depthF+vec3(spec*0.188,spec*0.157,spec*0.086);
-  float fg    = fract(sin(dot(floor(vUV*uRes),vec2(127.1,311.7)))*43758.5453)*2.0-1.0;
-  col += fg*0.025;
-  gl_FragColor = vec4(clamp(col,0.0,1.0),1.0);
-}`;
-
-function mkShader(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
-const prog=gl.createProgram();
-gl.attachShader(prog,mkShader(gl.VERTEX_SHADER,VSRC));
-gl.attachShader(prog,mkShader(gl.FRAGMENT_SHADER,FSRC));
-gl.linkProgram(prog);
-gl.useProgram(prog);
-
-const vbuf=gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER,vbuf);
-gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, 1,1, -1,-1, 1,1, -1,1]),gl.STATIC_DRAW);
-const aLoc=gl.getAttribLocation(prog,'aPos');
-gl.enableVertexAttribArray(aLoc);
-gl.vertexAttribPointer(aLoc,2,gl.FLOAT,false,0,0);
-
-gl.uniform1i(gl.getUniformLocation(prog,'uHeight'),0);
-gl.uniform1i(gl.getUniformLocation(prog,'uGrain'), 1);
-gl.uniform2f(gl.getUniformLocation(prog,'uTexel'),1/W,1/H);
-gl.uniform2f(gl.getUniformLocation(prog,'uRes'),  W, H);
-gl.viewport(0,0,W,H);
-
-const htex=gl.createTexture();
-gl.activeTexture(gl.TEXTURE0);
-gl.bindTexture(gl.TEXTURE_2D,htex);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-
-const gtex=gl.createTexture();
-gl.activeTexture(gl.TEXTURE1);
-gl.bindTexture(gl.TEXTURE_2D,gtex);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-
-const hmap     = new Float32Array(W * H);
-const strokeMap = new Int32Array(W * H);
-const subHbuf  = new Float32Array(600 * 600);
-let strokeId = 1;
-
-const AMB       = 0.56;
-const LZ_N      = 0.81 / Math.sqrt(0.55*0.55 + 0.20*0.20 + 0.81*0.81);
-const grainCorr = 1.0 / (AMB + (1 - AMB) * LZ_N);
-
-let radius       = 12;
-let eraser       = false;
-let isDown       = false;
-let lx = 0, ly = 0;
-let smoothVel    = 0;
-let prevEvTime   = 0;
-let currentDepth = 0.85;
-let strokeDist   = 0;
-let lastDirX     = 0, lastDirY = 0;
-const strokeTail = [];
-
-const undoStack = [];
-const MAX_UNDO  = 15;
-function pushUndo(){ undoStack.push(hmap.slice()); if(undoStack.length>MAX_UNDO) undoStack.shift(); }
-function undo(){ if(!undoStack.length) return; hmap.set(undoStack.pop()); rAll(); }
-
-function hash(x,y){ const s=Math.sin(x*127.1+y*311.7)*43758.5453123; return s-Math.floor(s); }
-function vnoise(px,py){
-  const ix=Math.floor(px),iy=Math.floor(py),fx=px-ix,fy=py-iy;
-  const ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
-  const a=hash(ix,iy),b=hash(ix+1,iy),c=hash(ix,iy+1),d=hash(ix+1,iy+1);
-  return a+(b-a)*ux+(c-a)*uy+(a-b-c+d)*ux*uy;
-}
-
-function makeGrain(){
-  const data=new Uint8Array(W*H*4);
-  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    const i=y*W+x;
-    const g=vnoise(x*.010,y*.010)*.38+vnoise(x*.045,y*.045)*.32+vnoise(x*.18,y*.18)*.22+hash(x,y)*.08;
-    const spk=hash(x*3+17,y*3+41);
-    const sp=spk>0.95?(spk-0.95)/0.05*0.22:0;
-    data[i*4]  =Math.min(255,((218+g*30+sp*38)*grainCorr+.5)|0);
-    data[i*4+1]=Math.min(255,((195+g*25+sp*26)*grainCorr+.5)|0);
-    data[i*4+2]=Math.min(255,((148+g*20+sp*14)*grainCorr+.5)|0);
-    data[i*4+3]=255;
-  }
-  return data;
-}
-
-function uploadHRect(x0,y0,x1,y1){
-  const rx0=Math.max(0,x0|0),ry0=Math.max(0,y0|0);
-  const rx1=Math.min(W-1,x1|0),ry1=Math.min(H-1,y1|0);
-  const dw=rx1-rx0+1,dh=ry1-ry0+1;
-  if(dw<=0||dh<=0) return;
-  gl.activeTexture(gl.TEXTURE0);
-  if(dw>600||dh>600){
-    gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,W,H,hFmt,gl.FLOAT,hmap);
-  } else {
-    for(let r=0;r<dh;r++){ const src=(ry0+r)*W+rx0; subHbuf.set(hmap.subarray(src,src+dw),r*dw); }
-    gl.texSubImage2D(gl.TEXTURE_2D,0,rx0,ry0,dw,dh,hFmt,gl.FLOAT,subHbuf.subarray(0,dw*dh));
-  }
-  gl.drawArrays(gl.TRIANGLES,0,6);
-}
-
-function rAll(){
-  gl.activeTexture(gl.TEXTURE0);
-  gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,W,H,hFmt,gl.FLOAT,hmap);
-  gl.drawArrays(gl.TRIANGLES,0,6);
-}
-
-function stampH(cx,cy,dirX,dirY,depthMul){
-  const SOFT=1.06,rSoft=radius*SOFT,r=Math.ceil(rSoft);
-  const hasDir=(dirX!==0||dirY!==0);
-  const x0=Math.max(0,Math.floor(cx-r)),y0=Math.max(0,Math.floor(cy-r));
-  const x1=Math.min(W-1,Math.ceil(cx+r)),y1=Math.min(H-1,Math.ceil(cy+r));
-  for(let py=y0;py<=y1;py++){
-    for(let px=x0;px<=x1;px++){
-      const dx=px-cx,dy=py-cy,dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist>rSoft) continue;
-      const t=dist/radius;
-      const edge=dist>radius?Math.max(0,1-(dist-radius)/(rSoft-radius)):1.0;
-      const idx=py*W+px;
-      if(eraser){
-        const fo=Math.exp(-3.5*t*t)*edge;
-        hmap[idx]*=(1.0-fo*0.55);
-        if(Math.abs(hmap[idx])<0.004) hmap[idx]=0;
-      } else if(t<0.68){
-        const gt=t/0.68,fo=Math.exp(-3.2*gt*gt)*edge;
-        const target=-fo*0.70*depthMul;
-        if(hmap[idx]>target){
-          hmap[idx]=target;
-          strokeMap[idx]=strokeId;
-        } else if(strokeMap[idx]!==strokeId){
-          hmap[idx]=Math.max(hmap[idx]-fo*0.002*depthMul,-1.0);
-        }
-      } else {
-        const rt=(t-0.68)/0.32,rf=Math.exp(-5.5*rt*rt)*edge;
-        let ridgeW=1.0;
-        if(hasDir&&dist>0.5){ const perp=Math.abs(-dirY*dx+dirX*dy)/dist; ridgeW=0.10+0.90*perp; }
-        hmap[idx]=Math.min(hmap[idx]+rf*0.030*ridgeW*depthMul,0.30);
+  <!DOCTYPE html>                               
+  <html lang="en">                                                                                   
+  <head>                                                                                           
+    <meta charset="UTF-8" />                                                                         
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,             
+  user-scalable=no" />                                                                               
+    <title>3D Sand Drawing</title>                                                                   
+    <link rel="icon" href="favicon.png" />                                                           
+    <link rel="preconnect" href="https://fonts.googleapis.com" />                                    
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" 
+  rel="stylesheet" />                                                                                
+    <style>                                                                                        
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }                      
+                                                                                                     
+      html, body {
+        width: 100%; height: 100%;                                                                   
+        background: #0d0b09;                                                                         
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: flex-start;                                            
+        padding-top: 12px;                                                                         
+        font-family: 'Figtree', sans-serif;                                                          
+        user-select: none; overflow: hidden;                                                         
       }
-    }
+                                                                                                     
+      #wrap {                                                                                        
+        position: relative; border-radius: 8px; overflow: hidden;
+        margin-bottom: 14px;                                                                         
+        box-shadow: 0 28px 90px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.04);                  
+      }                                                                                              
+      canvas { display: block; }                                                                     
+      #cc { display: none; }                                                                         
+      #sc { cursor: default; touch-action: none; }                                                   
+  
+      #bar {                                                                                         
+        display: flex; align-items: center; gap: 8px;                                              
+        padding: 9px 18px;                                                                           
+        background: rgba(255,255,255,0.05);                                                        
+        border: 1px solid rgba(255,255,255,0.08);                                                    
+        border-radius: 40px;
+        backdrop-filter: blur(8px);                                                                  
+        flex-wrap: wrap; justify-content: center;                                                  
+        max-width: calc(100vw - 24px);                                                               
+      }
+      .sep { width: 1px; height: 18px; background: rgba(255,255,255,0.12); margin: 0 2px;            
+  flex-shrink: 0; }                                                                                  
+  
+      button {                                                                                       
+        font-family: 'Figtree', sans-serif;
+        font-size: 13px; font-weight: 500;
+        display: inline-flex; align-items: center; gap: 5px;                                         
+        padding: 6px 14px; border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.10);                                                    
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.55);                                                               
+        cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow   
+  0.15s;                                                                                             
+        white-space: nowrap; -webkit-tap-highlight-color: transparent;                               
+      }                                                                                              
+      button:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.88); }
+                                                                                                     
+      button.on {                                                                                    
+        background: rgba(195,155,90,0.28);                                                           
+        border-color: rgba(215,175,100,0.75);                                                        
+        color: #e2b96a;                                                                              
+        box-shadow: 0 0 0 2px rgba(195,155,90,0.22), inset 0 1px 0 rgba(255,255,255,0.10);
+      }                                                                                              
+      button.on:hover { background: rgba(195,155,90,0.38); }
+                                                                                                     
+      button.btn-save {                                                                              
+        background: rgba(59,130,246,0.18);
+        border-color: rgba(99,160,255,0.45);                                                         
+        color: rgba(147,197,253,0.90);                                                               
+      }
+      button.btn-save:hover {                                                                        
+        background: rgba(59,130,246,0.30);
+        border-color: rgba(99,160,255,0.70);
+        color: #bfdbfe;                                                                              
+      }
+      button.btn-reset:hover {                                                                       
+        background: rgba(239,68,68,0.16);
+        border-color: rgba(239,68,68,0.38);                                                          
+        color: rgba(252,165,165,0.90);
+      }                                                                                              
+                  
+      .size-group { display: flex; align-items: center; gap: 8px; }                                  
+      .size-label  { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.35);
+  letter-spacing: 0.02em; }                                                                          
+  
+      input[type=range] {                                                                            
+        -webkit-appearance: none; appearance: none;
+        width: 100px; height: 4px; border-radius: 2px;
+        background: rgba(255,255,255,0.14);                                                          
+        cursor: pointer; outline: none; border: none;
+      }                                                                                              
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;                                                                    
+        width: 18px; height: 18px; border-radius: 50%;
+        background: #c49b5a; cursor: pointer;                                                        
+        box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        transition: transform 0.1s;                                                                  
+      }           
+      input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }                      
+      input[type=range]::-moz-range-thumb {                                                          
+        width: 18px; height: 18px; border-radius: 50%; border: none;
+        background: #c49b5a; cursor: pointer;                                                        
+      }           
+      input[type=number] {                                                                           
+        -moz-appearance: textfield;
+        width: 44px;                                                                                 
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.10);                                                    
+        border-radius: 8px;                                                                          
+        color: rgba(255,255,255,0.75);
+        font-family: 'Figtree', sans-serif;                                                          
+        font-size: 12.5px; font-weight: 500;                                                         
+        padding: 5px 6px; text-align: center;
+        outline: none; transition: border-color 0.12s;                                               
+      }                                                                                              
+      input[type=number]:focus { border-color: rgba(195,155,90,0.55); }
+      input[type=number]::-webkit-inner-spin-button,                                                 
+      input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }                    
+  
+      @media (max-width: 600px) {                                                                    
+        html, body { padding-top: 8px; }
+        #wrap { margin-bottom: 10px; }                                                               
+        #bar { padding: 8px 12px; gap: 6px; border-radius: 16px; }
+        button { padding: 7px 12px; font-size: 14px; }                                               
+        input[type=range] { width: 80px; }
+        .num-input { display: none; }                                                                
+        .sep { height: 16px; }
+      }                                                                                              
+    </style>      
+  </head>                                                                                            
+  <body>          
+
+  <div id="wrap">
+    <canvas id="sc"></canvas>
+    <canvas id="cc"></canvas>                                                                        
+  </div>
+                                                                                                     
+  <div id="bar">  
+    <div class="size-group">
+      <span class="size-label">Size</span>
+      <input type="range"  id="szr" min="1" max="100" value="12" />
+      <input type="number" id="szn" min="1" max="100" value="12" class="num-input" autocomplete="off"
+   />                                                                                                
+    </div>                                                                                           
+    <div class="sep"></div>                                                                          
+    <button id="ber" onclick="toggleEra()" title="Toggle eraser">🪏</button>
+    <div class="sep"></div>                                                                          
+    <button id="bsnd" onclick="toggleSound()" title="Toggle ocean sound">🌊</button>
+    <div class="sep"></div>                                                                          
+    <button class="btn-reset" onclick="resetAll()">Reset</button>
+    <div class="sep"></div>                                                                          
+    <button class="btn-save" onclick="saveImage()">Save</button>                                     
+  </div>
+                                                                                                     
+  <script>        
+  const sc   = document.getElementById('sc');
+  const cc   = document.getElementById('cc');                                                        
+  const cctx = cc.getContext('2d');
+                                                                                                     
+  const MOBILE = window.innerWidth < 600;                                                            
+  const W = Math.min(window.innerWidth  - (MOBILE ? 16 : 40), 1160) | 0;
+  const H = Math.max(300, window.innerHeight - (MOBILE ? 100 : 60)) | 0;                             
+  sc.width = cc.width  = W;                                                                          
+  sc.height = cc.height = H;                                                                         
+                                                                                                     
+  const maxRadius = 100;                                                                             
+  document.getElementById('szr').max = maxRadius;
+  document.getElementById('szn').max = maxRadius;
+                                                                                                     
+  const _gl2  = sc.getContext('webgl2', {preserveDrawingBuffer:true});                               
+  const _gl1  = !_gl2 && sc.getContext('webgl', {preserveDrawingBuffer:true});                       
+  const gl    = _gl2 || _gl1;                                                                        
+  const isGL2 = !!_gl2;
+                                                                                                     
+  let hFmt, intFmt;                                                                                  
+  if (isGL2) { intFmt = gl.R32F; hFmt = gl.RED; }
+  else { gl.getExtension('OES_texture_float'); intFmt = gl.LUMINANCE; hFmt = gl.LUMINANCE; }         
+                                                                                                     
+  const VSRC = `                                                                                     
+  attribute vec2 aPos;                                                                               
+  varying vec2 vUV;
+  void main(){                                                                                       
+    gl_Position=vec4(aPos,0.0,1.0);
+    vUV=vec2((aPos.x+1.0)*0.5, 1.0-(aPos.y+1.0)*0.5);                                                
+  }`;                                                                                                
+  
+  const FSRC = `                                                                                     
+  precision highp float;
+  varying vec2 vUV;                                                                                  
+  uniform sampler2D uHeight;
+  uniform sampler2D uGrain;
+  uniform vec2 uTexel;
+  uniform vec2 uRes;                                                                                 
+  const float AMB   = 0.56;
+  const float NS    = 18.0;                                                                          
+  const vec3  LIGHT = vec3(0.5504,-0.2002,0.8106);
+  void main(){                                                                                       
+    float h  = texture2D(uHeight,vUV).r;
+    float hL = texture2D(uHeight,vUV+vec2(-uTexel.x,0.0)).r;                                         
+    float hR = texture2D(uHeight,vUV+vec2( uTexel.x,0.0)).r;
+    float hU = texture2D(uHeight,vUV+vec2(0.0,-uTexel.y)).r;                                         
+    float hD = texture2D(uHeight,vUV+vec2(0.0, uTexel.y)).r;                                         
+    vec3  N     = normalize(vec3((hL-hR)*NS,(hU-hD)*NS,2.0));                                        
+    float diff  = max(0.0,dot(N,LIGHT));                                                             
+    float light = AMB+(1.0-AMB)*diff;
+    float depthF= max(0.30,exp(h*0.32));                                                             
+    vec3  grain = texture2D(uGrain,vUV).rgb;                                                         
+    vec3  warm  = vec3(0.365,0.251,0.216);                                                           
+    float shad  = clamp(-h*0.9,0.0,1.0);                                                             
+    vec3  base  = mix(grain,warm,shad*0.38);                                                         
+    float moist = clamp(-h*2.0,0.0,1.0); moist*=moist;                                               
+    base = mix(base,vec3(0.27,0.19,0.12),moist*0.20);                                                
+    float spec  = (h>0.05)?pow(N.z,18.0)*h*0.28:0.0;                                                 
+    vec3  col   = base*light*depthF+vec3(spec*0.188,spec*0.157,spec*0.086);                          
+    float fg    = fract(sin(dot(floor(vUV*uRes),vec2(127.1,311.7)))*43758.5453)*2.0-1.0;             
+    col += fg*0.025;                                                                                 
+    gl_FragColor = vec4(clamp(col,0.0,1.0),1.0);                                                     
+  }`;                                                                                                
+                  
+  function mkShader(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src);                
+  gl.compileShader(s); return s; }
+  const prog=gl.createProgram();                                                                     
+  gl.attachShader(prog,mkShader(gl.VERTEX_SHADER,VSRC));                                             
+  gl.attachShader(prog,mkShader(gl.FRAGMENT_SHADER,FSRC));
+  gl.linkProgram(prog);                                                                              
+  gl.useProgram(prog);
+                                                                                                     
+  const vbuf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,vbuf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, 1,1, -1,-1, 1,1,                      
+  -1,1]),gl.STATIC_DRAW);                                                                            
+  const aLoc=gl.getAttribLocation(prog,'aPos');                                                      
+  gl.enableVertexAttribArray(aLoc);                                                                  
+  gl.vertexAttribPointer(aLoc,2,gl.FLOAT,false,0,0);                                                 
+  
+  gl.uniform1i(gl.getUniformLocation(prog,'uHeight'),0);                                             
+  gl.uniform1i(gl.getUniformLocation(prog,'uGrain'), 1);
+  gl.uniform2f(gl.getUniformLocation(prog,'uTexel'),1/W,1/H);                                        
+  gl.uniform2f(gl.getUniformLocation(prog,'uRes'),  W, H);                                           
+  gl.viewport(0,0,W,H);                                                                              
+                                                                                                     
+  const htex=gl.createTexture();                                                                     
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,htex);                                                                
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);                                  
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);                                
+                  
+  const gtex=gl.createTexture();                                                                     
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D,gtex);                                                                
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);                                   
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);                                
+                  
+  const hmap     = new Float32Array(W * H);                                                          
+  const strokeMap = new Int32Array(W * H);
+  const subHbuf  = new Float32Array(600 * 600);                                                      
+  let strokeId = 1;                                                                                  
+                                                                                                     
+  const AMB       = 0.56;                                                                            
+  const LZ_N      = 0.81 / Math.sqrt(0.55*0.55 + 0.20*0.20 + 0.81*0.81);
+  const grainCorr = 1.0 / (AMB + (1 - AMB) * LZ_N);                                                  
+                                                                                                     
+  let radius       = 12;                                                                             
+  let eraser       = false;                                                                          
+  let isDown       = false;                                                                          
+  let lx = 0, ly = 0;
+  let smoothVel    = 0;                                                                              
+  let prevEvTime   = 0;                                                                              
+  let currentDepth = 0.85;
+  let strokeDist   = 0;                                                                              
+  let lastDirX     = 0, lastDirY = 0;
+  const strokeTail = [];                                                                             
+                  
+  const undoStack = [];                                                                              
+  const MAX_UNDO  = 15;
+  function pushUndo(){ undoStack.push(hmap.slice()); if(undoStack.length>MAX_UNDO) undoStack.shift();
+   }                                                                                                 
+  function undo(){ if(!undoStack.length) return; hmap.set(undoStack.pop()); rAll(); }                
+                                                                                                     
+  function hash(x,y){ const s=Math.sin(x*127.1+y*311.7)*43758.5453123; return s-Math.floor(s); }     
+  function vnoise(px,py){                                                                            
+    const ix=Math.floor(px),iy=Math.floor(py),fx=px-ix,fy=py-iy;                                     
+    const ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);                                                       
+    const a=hash(ix,iy),b=hash(ix+1,iy),c=hash(ix,iy+1),d=hash(ix+1,iy+1);                           
+    return a+(b-a)*ux+(c-a)*uy+(a-b-c+d)*ux*uy;                                                      
+  }                                                                                                  
+                                                                                                     
+  function makeGrain(){                                                                              
+    const data=new Uint8Array(W*H*4);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){                                                       
+      const i=y*W+x;                                                                                 
+      const
+  g=vnoise(x*.010,y*.010)*.38+vnoise(x*.045,y*.045)*.32+vnoise(x*.18,y*.18)*.22+hash(x,y)*.08;       
+      const spk=hash(x*3+17,y*3+41);
+      const sp=spk>0.95?(spk-0.95)/0.05*0.22:0;                                                      
+      data[i*4]  =Math.min(255,((218+g*30+sp*38)*grainCorr+.5)|0);                                   
+      data[i*4+1]=Math.min(255,((195+g*25+sp*26)*grainCorr+.5)|0);                                   
+      data[i*4+2]=Math.min(255,((148+g*20+sp*14)*grainCorr+.5)|0);                                   
+      data[i*4+3]=255;                                                                               
+    }                                                                                                
+    return data;                                                                                     
+  }               
+
+  function uploadHRect(x0,y0,x1,y1){                                                                 
+    const rx0=Math.max(0,x0|0),ry0=Math.max(0,y0|0);
+    const rx1=Math.min(W-1,x1|0),ry1=Math.min(H-1,y1|0);                                             
+    const dw=rx1-rx0+1,dh=ry1-ry0+1;
+    if(dw<=0||dh<=0) return;                                                                         
+    gl.activeTexture(gl.TEXTURE0);
+    if(dw>600||dh>600){                                                                              
+      gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,W,H,hFmt,gl.FLOAT,hmap);
+    } else {                                                                                         
+      for(let r=0;r<dh;r++){ const src=(ry0+r)*W+rx0; subHbuf.set(hmap.subarray(src,src+dw),r*dw); }
+      gl.texSubImage2D(gl.TEXTURE_2D,0,rx0,ry0,dw,dh,hFmt,gl.FLOAT,subHbuf.subarray(0,dw*dh));       
+    }                                                                                                
+    gl.drawArrays(gl.TRIANGLES,0,6);                                                                 
+  }                                                                                                  
+                                                                                                     
+  function rAll(){
+    gl.activeTexture(gl.TEXTURE0);                                                                   
+    gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,W,H,hFmt,gl.FLOAT,hmap);
+    gl.drawArrays(gl.TRIANGLES,0,6);                                                                 
   }
-}
+                                                                                                     
+  function stampH(cx,cy,dirX,dirY,depthMul){                                                         
+    const SOFT=1.06,rSoft=radius*SOFT,r=Math.ceil(rSoft);
+    const hasDir=(dirX!==0||dirY!==0);                                                               
+    const x0=Math.max(0,Math.floor(cx-r)),y0=Math.max(0,Math.floor(cy-r));
+    const x1=Math.min(W-1,Math.ceil(cx+r)),y1=Math.min(H-1,Math.ceil(cy+r));                         
+    for(let py=y0;py<=y1;py++){                                                                      
+      for(let px=x0;px<=x1;px++){                                                                    
+        const dx=px-cx,dy=py-cy,dist=Math.sqrt(dx*dx+dy*dy);                                         
+        if(dist>rSoft) continue;
+        const t=dist/radius;                                                                         
+        const edge=dist>radius?Math.max(0,1-(dist-radius)/(rSoft-radius)):1.0;
+        const idx=py*W+px;                                                                           
+        if(eraser){                                                                                  
+          const fo=Math.exp(-3.5*t*t)*edge;                                                          
+          hmap[idx]*=(1.0-fo*0.55);                                                                  
+          if(Math.abs(hmap[idx])<0.004) hmap[idx]=0;                                                 
+        } else if(t<0.68){                                                                           
+          const gt=t/0.68,fo=Math.exp(-3.2*gt*gt)*edge;                                              
+          const target=-fo*0.70*depthMul;                                                            
+          if(hmap[idx]>target){                                                                      
+            hmap[idx]=target;                                                                        
+            strokeMap[idx]=strokeId;                                                                 
+          } else if(strokeMap[idx]!==strokeId){                                                      
+            hmap[idx]=Math.max(hmap[idx]-fo*0.002*depthMul,-1.0);                                    
+          }                                                                                          
+        } else {                                                                                     
+          const rt=(t-0.68)/0.32,rf=Math.exp(-5.5*rt*rt)*edge;                                       
+          let ridgeW=1.0;                                                                            
+          if(hasDir&&dist>0.5){ const perp=Math.abs(-dirY*dx+dirX*dy)/dist; ridgeW=0.10+0.90*perp; } 
+          hmap[idx]=Math.min(hmap[idx]+rf*0.030*ridgeW*depthMul,0.30);                               
+        }                                                                                            
+      }                                                                                              
+    }                                                                                                
+  }               
 
-function velToDepth(v){ return Math.max(0.15,1.0/(1.0+v*1.6)); }
-
-function getPos(e){
-  const r=sc.getBoundingClientRect();
-  const src=e.touches?e.touches[0]:e;
-  return {x:src.clientX-r.left, y:src.clientY-r.top};
-}
-
-function stroke(ax,ay,bx,by,depthMul){
-  const dx=bx-ax,dy=by-ay,dist=Math.sqrt(dx*dx+dy*dy);
-  if(dist<1.0 && strokeDist>Math.max(radius,10)) return;
-  const dirX=dist>0.5?dx/dist:0,dirY=dist>0.5?dy/dist:0;
-  if(dirX!==0||dirY!==0){ lastDirX=dirX; lastDirY=dirY; }
-  strokeDist+=dist;
-  const fadeIn=Math.min(1.0,Math.max(0,strokeDist)/Math.max(radius,10));
-  const velMul=eraser?1.0:Math.max(0.28,Math.min(1.0,smoothVel*5.0+0.28));
-  const effDepth=depthMul*fadeIn;
-  const effRadius=radius*(0.28+0.72*fadeIn)*velMul;
-  const step=Math.max(0.5,effRadius*0.22);
-  const n=dist>0?Math.ceil(dist/step):0;
-  const saved=radius; radius=Math.max(1,effRadius);
-  for(let i=0;i<=n;i++){ const t=n?i/n:0; stampH(ax+dx*t,ay+dy*t,dirX,dirY,effDepth); }
-  radius=saved;
-  const pad=saved+5;
-  uploadHRect(Math.min(ax,bx)-pad,Math.min(ay,by)-pad,Math.max(ax,bx)+pad,Math.max(ay,by)+pad);
-}
-
-function onDown(e){
-  e.preventDefault();
-  isDown=true;
-  sc.setPointerCapture&&sc.setPointerCapture(e.pointerId);
-  const p=getPos(e);
-  lx=p.x; ly=p.y;
-  prevEvTime=e.timeStamp; smoothVel=0;
-  pushUndo();
-  strokeId++;
-  strokeDist=-radius; strokeTail.length=0;
-  const hasP=e.pointerType!=='mouse'&&e.pressure>0.01;
-  currentDepth=hasP?Math.min(1,e.pressure*1.8):1.0;
-  stroke(p.x,p.y,p.x,p.y,currentDepth);
-}
-
-function onMove(e){
-  e.preventDefault();
-  if(!isDown) return;
-  const p=getPos(e);
-  const dt=Math.max(1,e.timeStamp-prevEvTime);
-  const dx=p.x-lx,dy=p.y-ly;
-  smoothVel=smoothVel*0.68+(Math.sqrt(dx*dx+dy*dy)/dt)*0.32;
-  prevEvTime=e.timeStamp;
-  const hasP=e.pointerType!=='mouse'&&e.pressure>0.01;
-  currentDepth=hasP?Math.min(1,e.pressure*1.8):velToDepth(smoothVel);
-  stroke(lx,ly,p.x,p.y,currentDepth);
-  lx=p.x; ly=p.y;
-  strokeTail.push({x:p.x,y:p.y});
-  if(strokeTail.length>60) strokeTail.shift();
-}
-
-function onUp(){ isDown=false; smoothVel=0; currentDepth=0.85; }
-
-sc.addEventListener('pointerdown', onDown);
-sc.addEventListener('pointermove', onMove);
-sc.addEventListener('pointerup',   onUp);
-sc.addEventListener('pointercancel', onUp);
-sc.addEventListener('pointerleave',  onUp);
-
-// --- UPDATED SIZE LOGIC (Hardcoded Max 100) ---
-const szr = document.getElementById('szr');
-const szn = document.getElementById('szn');
-
-function setRadius(v, clampMin = true) {
-  let num = parseFloat(v);
-  if (isNaN(num)) return;
+  function velToDepth(v){ return Math.max(0.15,1.0/(1.0+v*1.6)); }                                   
   
-  const minVal = clampMin ? 1 : 0;
-  // Hardcoded maxRadius check to 100
-  num = Math.max(minVal, Math.min(100, Math.round(num)));
+  function getPos(e){                                                                                
+    const r=sc.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;                                                              
+    return {x:src.clientX-r.left, y:src.clientY-r.top};                                              
+  }
+                                                                                                     
+  function stroke(ax,ay,bx,by,depthMul){                                                             
+    const dx=bx-ax,dy=by-ay,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<1.0 && strokeDist>Math.max(radius,10)) return;                                           
+    const dirX=dist>0.5?dx/dist:0,dirY=dist>0.5?dy/dist:0;                                           
+    if(dirX!==0||dirY!==0){ lastDirX=dirX; lastDirY=dirY; }                                          
+    strokeDist+=dist;                                                                                
+    const fadeIn=Math.min(1.0,Math.max(0,strokeDist)/Math.max(radius,10));                           
+    const velMul=eraser?1.0:Math.max(0.28,Math.min(1.0,smoothVel*5.0+0.28));                         
+    const effDepth=depthMul*fadeIn;                                                                  
+    const effRadius=radius*(0.28+0.72*fadeIn)*velMul;                                                
+    const step=Math.max(0.5,effRadius*0.22);                                                         
+    const n=dist>0?Math.ceil(dist/step):0;                                                           
+    const saved=radius; radius=Math.max(1,effRadius);                                                
+    for(let i=0;i<=n;i++){ const t=n?i/n:0; stampH(ax+dx*t,ay+dy*t,dirX,dirY,effDepth); }            
+    radius=saved;                                                                                    
+    const pad=saved+5;                                                                               
+    uploadHRect(Math.min(ax,bx)-pad,Math.min(ay,by)-pad,Math.max(ax,bx)+pad,Math.max(ay,by)+pad);    
+  }                                                                                                  
   
-  radius = num; 
-  szr.value = num; 
-  szn.value = num;
-}
-
-const selectAll = (e) => {
-  setTimeout(() => {
-    e.target.setSelectionRange(0, e.target.value.length);
-  }, 10);
-};
-
-szn.addEventListener('focus', selectAll);
-szn.addEventListener('click', selectAll);
-
-szr.addEventListener('input', () => setRadius(szr.value));
-
-szn.addEventListener('input', (e) => {
-  const val = e.target.value;
-  if (val === "" || val === "0") return;
-  setRadius(val, false);
-});
-
-szn.addEventListener('blur', (e) => {
-  if (e.target.value === "" || parseFloat(e.target.value) < 1) setRadius(1);
-  else setRadius(e.target.value);
-});
-
-szn.addEventListener('change', () => setRadius(szn.value));
-
-function toggleEra(){ eraser=!eraser; document.getElementById('ber').classList.toggle('on',eraser); }
-function resetAll(){ hmap.fill(0); rAll(); }
-function saveImage(){ rAll(); const a=document.createElement('a'); a.download='sand-drawing.png'; a.href=sc.toDataURL('image/png'); a.click(); }
-
-// UPDATED: Linked to Google Drive raw file data
-const audioEl=new Audio('https://docs.google.com/uc?export=download&id=1J8t3VGfphmqrliKghLsOv6UoOcOHDnsy');
-audioEl.loop=true; audioEl.volume=0.8;
-function toggleSound(){
-  const btn=document.getElementById('bsnd');
-  if(audioEl.paused){ audioEl.play().then(()=>btn.classList.add('on')).catch(()=>{}); }
-  else { audioEl.pause(); audioEl.currentTime=0; btn.classList.remove('on'); }
-}
-
-document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'){ e.preventDefault(); undo(); }
-});
-
-const grainData=makeGrain();
-gl.activeTexture(gl.TEXTURE1);
-gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,grainData);
-gl.activeTexture(gl.TEXTURE0);
-gl.texImage2D(gl.TEXTURE_2D,0,intFmt,W,H,0,hFmt,gl.FLOAT,hmap);
-gl.drawArrays(gl.TRIANGLES,0,6);
-</script>
-</body>
-</html>
+  function onDown(e){                                                                                
+    e.preventDefault();
+    isDown=true;
+    sc.setPointerCapture&&sc.setPointerCapture(e.pointerId);
+    const p=getPos(e);                                                                               
+    lx=p.x; ly=p.y;
+    prevEvTime=e.timeStamp; smoothVel=0;                                                             
+    pushUndo();                                                                                      
+    strokeId++;
+    strokeDist=-radius; strokeTail.length=0;                                                         
+    const hasP=e.pointerType!=='mouse'&&e.pressure>0.01;                                             
+    currentDepth=hasP?Math.min(1,e.pressure*1.8):1.0;                                                
+    stroke(p.x,p.y,p.x,p.y,currentDepth);                                                            
+  }                                                                                                  
+                                                                                                     
+  function onMove(e){                                                                                
+    e.preventDefault();
+    if(!isDown) return;
+    const p=getPos(e);
+    const dt=Math.max(1,e.timeStamp-prevEvTime);                                                     
+    const dx=p.x-lx,dy=p.y-ly;
+    smoothVel=smoothVel*0.68+(Math.sqrt(dx*dx+dy*dy)/dt)*0.32;                                       
+    prevEvTime=e.timeStamp;                                                                          
+    const hasP=e.pointerType!=='mouse'&&e.pressure>0.01;                                             
+    currentDepth=hasP?Math.min(1,e.pressure*1.8):velToDepth(smoothVel);                              
+    stroke(lx,ly,p.x,p.y,currentDepth);
+    lx=p.x; ly=p.y;                                                                                  
+    strokeTail.push({x:p.x,y:p.y});
+    if(strokeTail.length>60) strokeTail.shift();                                                     
+  }               
+                                                                                                     
+  function onUp(){ isDown=false; smoothVel=0; currentDepth=0.85; }                                   
+  
+  sc.addEventListener('pointerdown', onDown);                                                        
+  sc.addEventListener('pointermove', onMove);
+  sc.addEventListener('pointerup',   onUp);
+  sc.addEventListener('pointercancel', onUp);                                                        
+  sc.addEventListener('pointerleave',  onUp);
+                                                                                                     
+  const szr = document.getElementById('szr');                                                        
+  const szn = document.getElementById('szn');
+                                                                                                     
+  function setRadius(v, clampMin = true) {                                                           
+    let num = parseFloat(v);
+    if (isNaN(num)) return;                                                                          
+    const minVal = clampMin ? 1 : 0;                                                                 
+    num = Math.max(minVal, Math.min(100, Math.round(num)));
+    radius = num;                                                                                    
+    szr.value = num;
+    szn.value = num;                                                                                 
+  }               
+                                                                                                     
+  const selectAll = (e) => {
+    setTimeout(() => { e.target.setSelectionRange(0, e.target.value.length); }, 10);                 
+  };                                                                                                 
+  
+  szn.addEventListener('focus', selectAll);                                                          
+  szn.addEventListener('click', selectAll);
+  szr.addEventListener('input', () => setRadius(szr.value));                                         
+  szn.addEventListener('input', (e) => {
+    const val = e.target.value;                                                                      
+    if (val === "" || val === "0") return;
+    setRadius(val, false);                                                                           
+  });             
+  szn.addEventListener('blur', (e) => {                                                              
+    if (e.target.value === "" || parseFloat(e.target.value) < 1) setRadius(1);
+    else setRadius(e.target.value);                                                                  
+  });
+  szn.addEventListener('change', () => setRadius(szn.value));                                        
+                                                                                                     
+  function toggleEra(){ eraser=!eraser; document.getElementById('ber').classList.toggle('on',eraser);
+   }                                                                                                 
+  function resetAll(){ hmap.fill(0); rAll(); }                                                       
+  function saveImage(){ rAll(); const a=document.createElement('a'); a.download='sand-drawing.png';
+  a.href=sc.toDataURL('image/png'); a.click(); }                                                     
+  
+  const audioEl = new Audio('https://archive.org/download/oceanwaves_202604/oceanwaves.mp3');        
+  audioEl.loop = true;
+  audioEl.volume = 0.8;                                                                              
+  function toggleSound(){
+    const btn = document.getElementById('bsnd');                                                     
+    if(audioEl.paused){ audioEl.play().then(()=>btn.classList.add('on')).catch(()=>{}); }
+    else { audioEl.pause(); audioEl.currentTime=0; btn.classList.remove('on'); }                     
+  }                                                                                                  
+                                                                                                     
+  document.addEventListener('keydown',e=>{                                                           
+    if((e.ctrlKey||e.metaKey)&&e.key==='z'){ e.preventDefault(); undo(); }
+  });                                                                                                
+  
+  const grainData=makeGrain();                                                                       
+  gl.activeTexture(gl.TEXTURE1);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,grainData);                   
+  gl.activeTexture(gl.TEXTURE0);                                                                     
+  gl.texImage2D(gl.TEXTURE_2D,0,intFmt,W,H,0,hFmt,gl.FLOAT,hmap);
+  gl.drawArrays(gl.TRIANGLES,0,6);                                                                   
+  </script>       
+  </body>                                                                                            
+  </html>   
