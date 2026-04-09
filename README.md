@@ -1,2 +1,12 @@
-# 3dsand
-draw in sand
+# 3d sand
+
+made 3d sand just so i can draw in it
+
+drag to carve. fast = shallow, slow = deep. WebGL normals do the lighting math so it actually looks like sand
+
+**controls**
+- draw with mouse or touch
+- adjust brush size with the slider
+- 🪏 eraser mode
+- 🌊 ocean sounds
+- undo / reset / save as png
